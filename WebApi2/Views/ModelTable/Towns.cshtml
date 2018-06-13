@@ -1,0 +1,183 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title></title>
+</head>
+<body>
+    <div>
+        <div id="tableBlock"></div>
+        <div id="editBlock" style="display:inline-block;float:right;padding-right:700px;">
+            <p><b>Редактирование названия города</b></p>
+            <table>
+                <tr><td><input type="hidden" id="editId" /></td><td></td></tr>
+                <tr><td><label>Название города </label></td><td><input type="text" id="editname_town" /></td></tr>
+            </table>
+            <button id="editTown">Сохранить</button>
+            <button onclick="window.location.reload()" style="">Отмена</button>
+        </div>
+
+        <div id="createBlock" style="display:inline-block;float:right;padding-right:700px;">
+            <p><b>Добавление города</b></p>
+            <table>
+                <tr><td><label>Название города </label></td><td><input type="text" id="addname_town" /></td></tr>
+            </table>
+            <button id="addTown">Сохранить</button>
+        </div>
+
+        <div>
+            @{
+            var grid = new WebGrid(Model);
+            grid.Pager(WebGridPagerModes.All);
+            }
+            @grid.GetHtml(columns: grid.Columns(grid.Column("Id", "ID"),
+                                                              grid.Column("name_town", "Наименование города"),
+                                                              grid.Column(format: @<text><button id='editItem' data-item='@item.Id' onclick='EditItem(this);'>Редактировать</button>
+                                                                <button id='delItem' data-item='@item.Id' onclick='DeleteItem(this);'>Удалить</button></text>)))
+
+        </div>
+
+        <script src="~/Scripts/jquery-1.10.2.js"></script>
+        <script type="text/javascript">
+
+        $(document).ready(function () {
+
+            GetAllTowns();
+
+            $("#editTown").click(function (event) {
+                event.preventDefault();
+                EditTown();
+            });
+
+            $("#addTown").click(function (event) {
+                event.preventDefault();
+                AddTown();
+            });
+
+        });
+
+        // Получение всех городов по ajax-запросу
+        function GetAllTowns() {
+
+            $("#createBlock").css('display', 'block');
+            $("#editBlock").css('display', 'none');
+            $.ajax({
+                url: '/odata/Towns',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    WriteResponse(data);
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        // Добавление нового города
+        function AddTown() {
+            // получаем значения для добавляемого города
+            var t = {
+                name_town: $('#addname_town').val()
+            };
+
+            $.ajax({
+                url: '/odata/Towns',
+                type: 'POST',
+                data: JSON.stringify(t),
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllTowns();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+
+        // Удаление города
+        function DeleteTown(id) {
+
+            $.ajax({
+                url: '/odata/Towns(' + id + ')',
+                type: 'DELETE',
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllTowns();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        // редактирование города
+        function EditTown() {
+            var id = $('#editId').val()
+            // получаем новые значения для редактируемого города
+            var t = {
+                name_town: $('#editname_town').val()
+            };
+            $.ajax({
+                url: '/odata/Towns(' + id + ')',
+                type: 'PUT',
+                data: JSON.stringify(t),
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllTowns();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+
+        // обработчик удаления
+        function DeleteItem(el) {
+            // получаем id удаляемого объекта
+            var id = $(el).attr('data-item');
+            DeleteTown(id);
+        }
+
+        // обработчик редактирования
+        function EditItem(el) {
+            // получаем id редактируемого объекта
+            var id =
+                $(el).attr('data-item');
+            GetTown(id);
+        }
+
+        // вывод данных редактируемого города в поля для редактирования
+        function ShowTowns(t) {
+            if (t != null) {
+                $("#createBlock").css('display', 'none');
+                $("#editBlock").css('display', 'block');
+                $("#editId").val(t.Id);
+                $("#editname_town").val(t.name_town);
+            }
+            else {
+                alert("Такой город не существует");
+            }
+        }
+
+        // запрос города на редактирование
+        function GetTown(id) {
+            $.ajax({
+                url: '/odata/Towns(' + id + ')',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    ShowTowns(data);
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        </script>
+    </div>
+</body>
+</html>

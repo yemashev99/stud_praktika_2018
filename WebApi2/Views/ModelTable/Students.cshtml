@@ -1,0 +1,219 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title></title>
+</head>
+<body>
+    <div>
+        <button onclick='window.location.reload()'>Обновить страницу</button>
+
+        <div id="tableBlock"></div>
+        <div id="editBlock" style="display:inline-block;float:right;padding-right:300px;">
+            <p><b>Редактирование студента</b></p>
+            <table>
+                <tr><td><input type="hidden" id="editId" /></td><td></td></tr>
+                <tr><td><label>Ф.И.О. </label></td><td><input type="text" id="editFIO" /></td></tr>
+                <tr><td><label>Дата рождения </label></td><td><input type="date" id="editbirth"/></td></tr>
+                <tr><td><label>Курс </label></td><td><input type="number" id="editkurs" /></td></tr>
+                <tr><td><label>Общежитие </label></td><td><input type="checkbox" id="editdorm" /></td></tr>
+            </table>
+            <button id="editStudent">Сохранить</button>
+            <button onclick="window.location.reload()" style="">Отмена</button>
+        </div>
+
+        <div id="createBlock" style="display:inline-block;float:right;padding-right:300px;">
+            <p><b>Добавление студента</b></p>
+            <table>
+                <tr><td><label>Ф.И.О. </label></td><td><input type="text" id="addFIO" /></td></tr>
+                <tr><td><label>Дата рождения </label></td><td><input type="date" id="addbirth" /></td></tr>
+                <tr><td><label>Курс </label></td><td><input type="number" id="addkurs" /></td></tr>
+                <tr><td><label>Общежитие </label></td><td><input type="checkbox" id="adddorm" /></td></tr>
+            </table>
+            <button id="addStudent">Сохранить</button>
+        </div>
+
+        <div style="padding-top: 50px;">
+            @{
+            var grid = new WebGrid(Model);
+            grid.Pager(WebGridPagerModes.All);
+            }
+            @grid.GetHtml(columns: grid.Columns(grid.Column("Id", "ID"),
+                            grid.Column("FIO", "Ф.И.О."),
+                            grid.Column("birth", "Дата рождения", format: item => item.birth.ToString("dd.MM.yyyy")),
+                            grid.Column("Town.name_town", "Город"),
+                            grid.Column("kurs", "Курс"),
+                            grid.Column("dorm", header: "Общежитие"),
+                            grid.Column(format: @<text><button id='editItem' data-item='@item.Id' onclick='EditItem(this);'>Редактировать</button>
+                                <button id='delItem' data-item='@item.Id' onclick='DeleteItem(this);'>Удалить</button></text>)))
+
+        </div>
+
+        <script src="~/Scripts/jquery-1.10.2.js"></script>
+        <script type="text/javascript">
+
+        $(document).ready(function () {
+
+            GetAllStudents();
+
+            $("#editStudent").click(function (event) {
+                event.preventDefault();
+                EditStudent();
+            });
+
+            $("#addStudent").click(function (event) {
+                event.preventDefault();
+                AddStudent();
+            });
+
+        });
+
+        // Получение всех студентов по ajax-запросу
+        function GetAllStudents() {
+
+            $("#createBlock").css('display', 'block');
+            $("#editBlock").css('display', 'none');
+            $.ajax({
+                url: '/odata/Students',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    WriteResponse(data);
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        // Добавление нового студента
+        function AddStudent() {
+            // получаем значения для добавляемого студента
+            var stud = {
+                FIO: $('#addFIO').val(),
+                birth: $('#addbirth').val(),
+                kurs: $('#addkurs').val(),
+                dorm: $('#adddorm').val()
+            };
+
+            $.ajax({
+                url: '/odata/Students',
+                type: 'POST',
+                data: JSON.stringify(stud),
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllStudents();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+
+        // Удаление студента
+        function DeleteStudent(id) {
+
+            $.ajax({
+                url: '/odata/Students(' + id + ')',
+                type: 'DELETE',
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllStudents();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        // редактирование студента
+        function EditStudent() {
+            var id = $('#editId').val()
+            // получаем новые значения для редактируемого студента
+            var stud = {
+                Id: $('#editId').val(),
+                FIO: $('#editFIO').val(),
+                birth: $('#editbirth').val(),
+                kurs: $('#editkurs').val(),
+                dorm: $('#editdorm').val()
+            };
+            $.ajax({
+                url: '/odata/Students(' + id + ')',
+                type: 'PUT',
+                data: JSON.stringify(stud),
+                contentType: "application/json;charset=utf-8",
+                success: function (data) {
+                    GetAllStudents();
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        /*// вывод полученных данных на экран
+        function WriteResponse(students) {
+            var strResult = "<table><th>ID</th><th>Ф.И.О.</th><th>Дата рождения</th><th>Курс</th><th>Общежитие</th>";
+            $.each(students, function (index, stud) {
+                strResult += "<tr><td>" + stud.Id + "</td><td> " + stud.FIO + "</td><td>" +
+                    stud.birth + "</td><td>" + stud.kurs + "<tr><td>" + stud.dorm +
+                    "</td><td><a id='editItem' data-item='"
+                    + stud.Id + "' onclick='EditItem(this);' >Редактировать</a></td>" +
+                    "<td><a id='delItem' data-item='" + stud.Id + "' onclick='DeleteItem(this);' >Удалить</a></td></tr>";
+            });
+            strResult += "</table>";
+            $("#tableBlock").html(strResult);
+
+        }*/
+
+        // обработчик удаления
+        function DeleteItem(el) {
+            // получаем id удаляемого объекта
+            var id = $(el).attr('data-item');
+            DeleteStudent(id);
+        }
+
+        // обработчик редактирования
+        function EditItem(el) {
+            // получаем id редактируемого объекта
+            var id =
+                $(el).attr('data-item');
+            GetStudent(id);
+        }
+
+        // вывод данных редактируемого студента в поля для редактирования
+        function ShowStudents(stud) {
+            if (stud != null) {
+                $("#createBlock").css('display', 'none');
+                $("#editBlock").css('display', 'block');
+                $("#editId").val(stud.Id);
+                $("#editFIO").val(stud.FIO);
+                $("#editbirth").val(stud.birth);
+                $("#editkurs").val(stud.kurs);
+                $("#editdorm").val(stud.dorm);
+            }
+            else {
+                alert("Такой студент не существует");
+            }
+        }
+
+        // запрос студента на редактирование
+        function GetStudent(id) {
+            $.ajax({
+                url: '/odata/Students(' + id + ')',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    ShowStudents(data);
+                },
+                error: function (x, y, z) {
+                    alert(x + '\n' + y + '\n' + z);
+                }
+            });
+        }
+        </script>
+    </div>
+</body>
+</html>
